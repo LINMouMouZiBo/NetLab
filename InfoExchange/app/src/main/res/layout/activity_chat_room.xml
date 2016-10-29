@@ -6,16 +6,21 @@
     android:orientation="vertical">
 
     <!--<Button-->
-        <!--android:id="@+id/cont"-->
-        <!--android:layout_width="wrap_content"-->
-        <!--android:layout_height="wrap_content"-->
-        <!--android:text="连接"/>-->
+    <!--android:id="@+id/cont"-->
+    <!--android:layout_width="wrap_content"-->
+    <!--android:layout_height="wrap_content"-->
+    <!--android:text="连接"/>-->
+
+    <EditText
+        android:id="@+id/input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
 
     <Button
         android:id="@+id/send"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="多人聊天室"/>
+        android:text="发送"/>
 
     <ScrollView
         android:layout_width="match_parent"

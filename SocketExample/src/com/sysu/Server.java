@@ -21,7 +21,6 @@ public class Server extends ServerSocket {
 
 	private static final int SERVER_PORT = 2013;
 
-//	private static List<User> user_list = new ArrayList<User>();// 登录用户集合
 	private static List<ServerThread> thread_list = new ArrayList<ServerThread>();// 服务器已启用线程集合
 	private static LinkedList<Message> message_list = new LinkedList<Message>();// 存放消息队列
 
@@ -94,7 +93,8 @@ public class Server extends ServerSocket {
 			out = new PrintWriter(client.getOutputStream(), true);
 			in = new BufferedReader(new InputStreamReader(
 					client.getInputStream(), "UTF-8"));
-			out.println("成功连上聊天室,请输入你的名字：");
+			Message msg = produceMsg("成功连上聊天室,请输入你的名字：", 0);
+			out.println(msg.toString());
 			start();
 		}
 
@@ -102,24 +102,21 @@ public class Server extends ServerSocket {
 		public void run() {
 			try {
 				int flag = 0;
-				String line = in.readLine();
-				while (!"bye".equals(line)) {
+				String line = "";
+				while (!"bye".equals(line = in.readLine())) {
 					if (line == null || "".equals(line)) {
 						continue;
 					}
 					// 查看在线用户列表
 					if ("showuser".equals(line)) {
 						out.println(this.listOnlineUsers());
-						line = in.readLine();
 						continue;
 					}
 					// 第一次进入，保存名字
 					if (flag++ == 0) {
-//						name = line;
 						user = new User();
 						user.setIp(client.getInetAddress().getHostAddress());
 						user.setName(line);
-//						user_list.add(user);
 						thread_list.add(this);
 						out.println(user.getName() + "你好,可以开始聊天了...");
 						this.pushMessage(produceMsg("Client<" + user.getName()
@@ -127,7 +124,6 @@ public class Server extends ServerSocket {
 					} else {
 						this.pushMessage(produceMsg(line, 1));
 					}
-					line = in.readLine();
 				}
 				out.println("byeClient");
 			} catch (Exception e) {
@@ -155,6 +151,7 @@ public class Server extends ServerSocket {
 			}
 			Message message = new Message();
 			message.setMsg(msg);
+			message.setType(String.valueOf(type));
 			message.setTime(DateUtil.getDateString(DateUtil.getCurrrentDate()));
 			if (type == 0) {
 				message.setUserName("系统提示");

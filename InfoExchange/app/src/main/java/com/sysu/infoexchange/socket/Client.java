@@ -14,10 +14,11 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 
-public class Client  {
+// 与服务器通讯的socket
+public class Client {
 
     private String SERVER_IP = "127.0.0.1";
-    private static final int SERVER_PORT = 2013;
+    private int SERVER_PORT = 2013;
 
     private Socket client;
     private PrintWriter out;
@@ -31,9 +32,14 @@ public class Client  {
         SERVER_IP = ip;
     }
 
+    public Client(String ip, int port) {
+        SERVER_IP = ip;
+        SERVER_PORT = port;
+    }
+
     public void contSocket() throws Exception {
         client = new Socket(SERVER_IP, SERVER_PORT);
-        client.setSoTimeout(1000 * 5);
+        client.setSoTimeout(1000 * 60 * 5);
         out = new PrintWriter(client.getOutputStream(), true);
         /* 获取输出流 */
         in = new BufferedReader(new InputStreamReader(client.getInputStream(), "UTF-8"));
@@ -51,10 +57,14 @@ public class Client  {
 
     public void close() {
         try {
-            sendMsg("bye");
-            in.close();
-            out.close();
-            client.close();
+            if (client != null && client.isConnected())
+                sendMsg("bye");
+            if (in != null)
+                in.close();
+            if (out != null)
+                out.close();
+            if (client != null)
+                client.close();
         } catch (IOException e) {
             e.printStackTrace();
             Logger.e(e.getMessage());

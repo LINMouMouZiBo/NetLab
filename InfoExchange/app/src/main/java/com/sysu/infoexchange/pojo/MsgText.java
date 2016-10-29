@@ -6,6 +6,7 @@ public class MsgText implements Serializable {
     public String msg;
     public String time;
     public String userName;
+    public String type;
 
     public MsgText(String msg, String time, String userName) {
         this.msg = msg;
@@ -39,9 +40,17 @@ public class MsgText implements Serializable {
         return userName;
     }
 
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder(":");
+        StringBuilder sb = new StringBuilder("");
         sb.append("(userName");
         sb.append(":");
         sb.append(userName);
@@ -51,6 +60,9 @@ public class MsgText implements Serializable {
         sb.append(", msg");
         sb.append(":");
         sb.append(msg);
+        sb.append(", type");
+        sb.append(":");
+        sb.append(type);
         sb.append(")");
         return sb.toString();
     }
@@ -60,10 +72,11 @@ public class MsgText implements Serializable {
         msg = msg.replace(")", "");
         String[] item = msg.split(",");
         //  部分msg不是标准的数据形式，无法转化为mesText
-        if (item.length < 3) {
+        if (item.length < 4) {
             return null;
         }
         MsgText message = new MsgText();
+        message.setType(item[3].substring(item[3].indexOf(':') + 1));
         message.setMsg(item[2].substring(item[2].indexOf(':') + 1));
         message.setTime(item[1].substring(item[1].indexOf(':') + 1));
         message.setUserName(item[0].substring(item[0].indexOf(':') + 1));

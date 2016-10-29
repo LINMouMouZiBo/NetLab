@@ -16,11 +16,11 @@ import com.sysu.infoexchange.pojo.MsgText;
 import com.sysu.infoexchange.socket.Client;
 import com.sysu.infoexchange.utils.ApplicationUtil;
 
-public class MainActivity extends AppCompatActivity {
-//    private Client client;
+public class ChatRoomActivity extends AppCompatActivity {
+    //    private Client client;
     private ApplicationUtil appUtil;
     private TextView textView;
-    private String clientName;
+    private EditText editText;
 
     //    用于接收聊天信息
     private Handler handler = new Handler() {
@@ -51,7 +51,7 @@ public class MainActivity extends AppCompatActivity {
             super.handleMessage(msg);
             Bundle data = msg.getData();
             String val = data.getString("err");
-            Toast.makeText(MainActivity.this, val, Toast.LENGTH_SHORT).show();
+            Toast.makeText(ChatRoomActivity.this, val, Toast.LENGTH_SHORT).show();
         }
     };
 
@@ -60,12 +60,12 @@ public class MainActivity extends AppCompatActivity {
         Logger.init("sysu");
         try {
             super.onCreate(savedInstanceState);
-            setContentView(R.layout.activity_main);
+            setContentView(R.layout.activity_chat_room);
             Intent intent = this.getIntent();
             textView = (TextView) findViewById(R.id.text);
-            clientName = intent.getStringExtra("name");
+            editText = (EditText) findViewById(R.id.input);
 
-            appUtil =  (ApplicationUtil) MainActivity.this.getApplication();
+            appUtil =  (ApplicationUtil) ChatRoomActivity.this.getApplication();
             if (appUtil.getClient() == null) {
                 appUtil.initClient(intent.getStringExtra("ip"), 2013);
                 new Thread(networkTask).start();
@@ -76,7 +76,15 @@ public class MainActivity extends AppCompatActivity {
             send_btn.setOnClickListener(new Button.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-
+                    try {
+                        String in = editText.getText().toString();
+                        if (in != null && !"".equals(in))
+                            appUtil.getClient().sendMsg(editText.getText().toString());
+                    } catch (Exception e) {
+                        appUtil.closeClient();
+                        e.printStackTrace();
+                        Logger.e(e.getMessage());
+                    }
                 }
             });
         } catch (Exception e) {
@@ -94,10 +102,8 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void run() {
             try {
-            //  在这里进行 socket连接
+                //  在这里进行 socket连接
                 appUtil.getClient().contSocket();
-                Thread.sleep(1000);
-                appUtil.getClient().sendMsg(clientName);
             } catch (Exception e) {
                 e.printStackTrace();
                 Logger.e(e.getMessage());

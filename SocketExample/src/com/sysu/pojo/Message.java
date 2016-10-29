@@ -6,6 +6,8 @@ public class Message implements Serializable {
 	public String msg;
 	public String time;
 	public String userName;
+	//	0:代表系统的信息；1：为聊天信息
+	public String type;
 	
 	public void setMsg(String msg) {
 		this.msg = msg;
@@ -31,6 +33,14 @@ public class Message implements Serializable {
 		return userName;
 	}
 	
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+	
 	@Override
 	public String toString() {
 		StringBuilder sb = new StringBuilder("");
@@ -43,6 +53,9 @@ public class Message implements Serializable {
         sb.append(", msg");
         sb.append(":");
         sb.append(msg);
+        sb.append(", type");
+        sb.append(":");
+        sb.append(type);
         sb.append(")");
         return sb.toString();
 	}
