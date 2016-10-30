@@ -6,8 +6,8 @@ import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
@@ -15,7 +15,6 @@ import android.widget.Toast;
 
 import com.orhanobut.logger.Logger;
 import com.sysu.infoexchange.pojo.MsgText;
-import com.sysu.infoexchange.socket.Client;
 import com.sysu.infoexchange.utils.ApplicationUtil;
 
 import java.util.ArrayList;
@@ -29,6 +28,7 @@ public class MainActivity extends AppCompatActivity {
     private ListView listView;
     private String[] keySet = {"name", "ip"};
     private int[] toIds = {R.id.name, R.id.ip};
+    private List<HashMap<String, Object>> listData;
     //    socket连接时的信息
     private String ip;
     private String clientName;
@@ -99,6 +99,16 @@ public class MainActivity extends AppCompatActivity {
                     startActivity(intent);
                 }
             });
+
+            listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                    Intent intent = new Intent(MainActivity.this, P2pClientActivity.class);
+                    intent.putExtra("ip", (String) listData.get(position).get("ip"));
+                    intent.putExtra("name", (String) listData.get(position).get("name"));
+                    startActivity(intent);
+                }
+            });
         } catch (Exception e) {
             e.printStackTrace();
             Logger.e(e.getMessage());
@@ -107,7 +117,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     void updateOnlineUser(String res) {
-        List<HashMap<String, Object>> listData = parseDataFromString(res);
+        listData = parseDataFromString(res);
         /* 设置adapter */
         SimpleAdapter adapter = new SimpleAdapter(MainActivity.this,
                 listData,

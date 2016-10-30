@@ -1,5 +1,9 @@
 package com.sysu.infoexchange.pojo;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+
+import java.io.ByteArrayOutputStream;
 import java.io.Serializable;
 
 public class MsgText implements Serializable {
@@ -89,5 +93,15 @@ public class MsgText implements Serializable {
         message.setTime(item[1].substring(item[1].indexOf(':') + 1));
         message.setUserName(item[0].substring(item[0].indexOf(':') + 1));
         return message;
+    }
+
+    public byte[] getBytes(Bitmap bitmap){
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG, 0, baos);
+        return baos.toByteArray();
+    }
+
+    public Bitmap getBitmap(byte[] data){
+        return BitmapFactory.decodeByteArray(data, 0, data.length);
     }
 }

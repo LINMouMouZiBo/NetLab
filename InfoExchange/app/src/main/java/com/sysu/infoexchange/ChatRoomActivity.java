@@ -222,6 +222,7 @@ public class ChatRoomActivity extends AppCompatActivity {
                     try {
 //                        将output_image.jpg对象解析成Bitmap对象，然后设置到ImageView中显示出来
                         Bitmap bitmap = BitmapFactory.decodeStream(new FileInputStream(imageUri.getPath()));
+
                         picture.setImageBitmap(bitmap);
                     } catch (Exception e) {
                         e.printStackTrace();
