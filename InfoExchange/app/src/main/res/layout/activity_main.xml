@@ -27,7 +27,8 @@
     </ScrollView>
 
     <ListView
-        android:id="@+id/contacts_list"
+        android:id="@+id/online_user_list"
         android:layout_width="fill_parent"
+        android:scrollbars="vertical"
         android:layout_height="fill_parent" />
 </LinearLayout>

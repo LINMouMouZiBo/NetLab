@@ -3,10 +3,18 @@ package com.sysu.infoexchange.pojo;
 import java.io.Serializable;
 
 public class MsgText implements Serializable {
-    public String msg;
     public String time;
     public String userName;
+
+    // 目标位置
+    // 空字符表示聊天室内的消息
+    public String dst;
+
+    //	0: 系统信息, 1: 聊天信息, 2: 图片, 3: 显示在线用户列表
     public String type;
+
+    // 传送的数据
+    public String msg;
 
     public MsgText(String msg, String time, String userName) {
         this.msg = msg;
