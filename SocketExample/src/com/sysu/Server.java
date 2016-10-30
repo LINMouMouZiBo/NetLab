@@ -1,9 +1,6 @@
 package com.sysu;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -13,9 +10,9 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.oracle.tools.packager.Log;
 import com.sysu.pojo.Message;
 import com.sysu.pojo.User;
-import com.sysu.utils.DateUtil;
 
 public class Server extends ServerSocket {
 
@@ -67,7 +64,11 @@ public class Server extends ServerSocket {
 					// System.out.println(thread_list.size());
 					Message message = message_list.getFirst();
 					for (ServerThread thread : thread_list) {
-						thread.sendMessage(message);
+						User user = thread.getUser();
+						if (user.getChattingTarget().equals(message.dst)) {
+							Log.info("boardcast... " + message.toString());
+							thread.sendMessage(message);
+						}
 					}
 					message_list.removeFirst();
 				} catch (Exception e) {
@@ -84,83 +85,73 @@ public class Server extends ServerSocket {
 	 */
 	class ServerThread extends Thread {
 		private Socket client;
-		private PrintWriter out;
-		private BufferedReader in;
+		private ObjectOutputStream oos;
+		private ObjectInputStream ois;
 		private User user;
 
 		public ServerThread(Socket s) throws IOException {
 			client = s;
-			out = new PrintWriter(client.getOutputStream(), true);
-			in = new BufferedReader(new InputStreamReader(
-					client.getInputStream(), "UTF-8"));
-			Message msg = produceMsg("成功连上聊天室,请输入你的名字：", 0);
-			out.println(msg.toString());
+			oos = new ObjectOutputStream(client.getOutputStream());
+			ois = new ObjectInputStream(client.getInputStream());
+			Message msg = Message.fromText("系统消息", "成功连上聊天室,请输入你的名字：");
+
+			oos.writeObject(msg);
 			start();
 		}
 
 		@Override
 		public void run() {
 			try {
-				int flag = 0;
-				String line = "";
-				while (!"bye".equals(line = in.readLine())) {
-					if (line == null || "".equals(line)) {
-						continue;
-					}
+				boolean isFirst = true;
+
+				Message message;
+				while ((message = (Message)ois.readObject()) != null) {
+					String str = message.getText();
+
 					// 查看在线用户列表
-					if ("showuser".equals(line)) {
-						out.println(this.listOnlineUsers());
+					if ("showuser".equals(str)) {
+						oos.writeObject(this.getOnlineUsers());
 						continue;
 					}
+
+					if ("chat with:".equals(str.substring(0, 9))) {
+						user.setChattingTarget(str.substring(10));
+						Log.info(user.getName() + "enter P2P chatting");
+						continue;
+					}
+
 					// 第一次进入，保存名字
-					if (flag++ == 0) {
+					if (isFirst) {
+						isFirst = false;
 						user = new User();
 						user.setIp(client.getInetAddress().getHostAddress());
-						user.setName(line);
+						user.setName(str);
 						thread_list.add(this);
-						out.println(user.getName() + "你好,可以开始聊天了...");
-						this.pushMessage(produceMsg("Client<" + user.getName()
-								+ ">进入聊天室...", 0));
+						oos.writeObject(Message.fromText(user.getName(), "你好,可以开始聊天了..."));
+						this.pushMessage(Message.fromText("系统消息", "Client<" + user.getName() + ">进入聊天室..."));
+
+						Log.info(user.getName() + "enter system");
 					} else {
-						this.pushMessage(produceMsg(line, 1));
+						this.pushMessage(message); // 直接转发
 					}
 				}
-				out.println("byeClient");
+				oos.writeObject(Message.fromText("系统消息", "byeClient"));
 			} catch (Exception e) {
 				e.printStackTrace();
 			} finally {// 用户退出聊天室
 				try {
 					client.close();
-					out.close();
-					in.close();
+					oos.close();
+					ois.close();
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
 				thread_list.remove(this);
 //				user_list.remove(name);
-				pushMessage(produceMsg("Client<" + user.getName() + ">退出了聊天室", 0));
+				pushMessage(Message.fromText("系统消息", "Client<" + user.getName() + ">退出了聊天室"));
 			}
 		}
 
-		/*
-		 * type 为0 代表这是系统发出的提示信息，否则为用户信息
-		 */
-		private Message produceMsg(String msg, int type) {
-			if (msg == null) {
-				return null;
-			}
-			Message message = new Message();
-			message.setMsg(msg);
-			message.setType(String.valueOf(type));
-			message.setTime(DateUtil.getDateString(DateUtil.getCurrrentDate()));
-			if (type == 0) {
-				message.setUserName("系统提示");
-			} else {
-				message.setUserName(user.getName());
-			}
-			return message;
-		}
-		
 		// 获取该线程的user
 		private User getUser() {
 			return user;
@@ -182,19 +173,20 @@ public class Server extends ServerSocket {
 		}
 
 		// 向客户端发送一条消息
-		private void sendMessage(Message msg) {
-			out.println(msg.toString());
+		private void sendMessage(Message msg) throws IOException {
+			oos.writeObject(msg);
 		}
 
 		// 统计在线用户列表
-		private String listOnlineUsers() {
-			String s = "--- 在线用户列表 ---\015\012";
-			for (int i = 0; i < thread_list.size(); i++) {
-				s += "[" + thread_list.get(i).getUser().getName() + "] "
-						+ thread_list.get(i).getUser().getIp() + "\015\012";
+		private Message getOnlineUsers() {
+			String onlineUserList = "--- 在线用户列表 ---\015\012";
+			for (ServerThread aThread_list : thread_list) {
+				onlineUserList += "[" + aThread_list.getUser().getName() + "] "
+						+ aThread_list.getUser().getIp() + "\015\012";
 			}
-			s += "--------------------";
-			return s;
+			onlineUserList += "--------------------";
+
+			return Message.fromText("系统消息", onlineUserList);
 		}
 	}
 
