@@ -39,19 +39,20 @@ public class MainActivity extends AppCompatActivity {
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
             Bundle data = msg.getData();
-            String val = data.getString("msg");
+            MsgText msgText = (MsgText) data.getSerializable("msg");
+            p2pCommd(msgText);
+            String val = "";
             // UI界面的更新等相关操作
-            MsgText msgText = MsgText.toMess(val);
             if (msgText != null) {
                 StringBuilder sb = new StringBuilder();
                 sb.append(msgText.getTime());
                 sb.append("\t");
                 sb.append(msgText.getUserName());
                 sb.append(": \n\t");
-                sb.append(msgText.getMsg());
+                sb.append(msgText.getText());
                 val = sb.toString();
                 if ("3".equals(msgText.getType())) {
-                    updateOnlineUser(msgText.getMsg());
+                    updateOnlineUser(msgText.getText());
                 }
             }
             textView.setText(val + "\n" + textView.getText());
@@ -64,8 +65,8 @@ public class MainActivity extends AppCompatActivity {
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
             Bundle data = msg.getData();
-            String val = data.getString("err");
-            Toast.makeText(MainActivity.this, val, Toast.LENGTH_SHORT).show();
+            MsgText msgText = (MsgText) data.getSerializable("msg");
+            Toast.makeText(MainActivity.this, msgText.getText(), Toast.LENGTH_SHORT).show();
         }
     };
 
@@ -84,6 +85,7 @@ public class MainActivity extends AppCompatActivity {
             appUtil =  (ApplicationUtil) MainActivity.this.getApplication();
             if (appUtil.getClient() == null) {
                 appUtil.initClient(ip, 2013);
+                appUtil.setClientName(clientName);
                 new Thread(networkTask).start();
             }
             appUtil.getClient().setHandler(handler);
@@ -94,8 +96,6 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onClick(View view) {
                     Intent intent = new Intent(MainActivity.this, ChatRoomActivity.class);
-                    intent.putExtra("ip", ip);
-                    intent.putExtra("name", clientName);
                     startActivity(intent);
                 }
             });
@@ -104,8 +104,8 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                     Intent intent = new Intent(MainActivity.this, P2pClientActivity.class);
-                    intent.putExtra("ip", (String) listData.get(position).get("ip"));
-                    intent.putExtra("name", (String) listData.get(position).get("name"));
+                    appUtil.receivedip =  (String) listData.get(position).get("ip");
+                    appUtil.receivedName =  (String) listData.get(position).get("name");
                     startActivity(intent);
                 }
             });
@@ -113,6 +113,22 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
             Logger.e(e.getMessage());
             appUtil.closeClient();
+        }
+    }
+
+
+    private void p2pCommd(MsgText msgText) {
+        if (!"".equals(msgText.getDst()) && "0".equals(msgText.getType())) {
+            String comd = msgText.getText();
+            if ("#requestP2P".equals(comd)) {
+                Intent intent = new Intent("android.intent.action.MY_STATICRECEIVER");
+                Bundle bundle = new Bundle();
+                bundle.putSerializable("msg", msgText);
+                intent.putExtras(bundle);
+                sendBroadcast(intent);
+            } else if ("#agreeP2P".equals(comd)) {
+                msgText.setText("与对方建立连接，现在可以进行聊天了!");
+            }
         }
     }
 
@@ -138,9 +154,9 @@ public class MainActivity extends AppCompatActivity {
             //  在这里进行 socket连接
                 appUtil.getClient().contSocket();
                 Thread.sleep(100);
-                appUtil.getClient().sendMsg(clientName);
+                appUtil.getClient().sendMsg(MsgText.fromText("系统消息", clientName, "0"));
                 Thread.sleep(100);
-                appUtil.getClient().sendMsg("showuser");
+                appUtil.getClient().sendMsg(MsgText.fromText("系统消息", "#showuser", "0"));
             } catch (Exception e) {
                 e.printStackTrace();
                 Logger.e(e.getMessage());
@@ -148,7 +164,8 @@ public class MainActivity extends AppCompatActivity {
 
                 Message msg = new Message();
                 Bundle data = new Bundle();
-                data.putString("err", "网络异常，无法与服务器进行连接！");
+                MsgText msgText = MsgText.fromText("系统信息", "网络异常，无法与服务器进行连接！", "0");
+                data.putSerializable("err", msgText);
                 msg.setData(data);
                 ehandler.sendMessage(msg);
             }
@@ -176,6 +193,11 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onRestart() {
         super.onRestart();
+        try {
+            appUtil.getClient().sendMsg(MsgText.fromText("系统消息", "#showuser", "0"));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override

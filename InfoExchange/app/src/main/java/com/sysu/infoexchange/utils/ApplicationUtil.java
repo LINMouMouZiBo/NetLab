@@ -14,57 +14,34 @@ import java.io.IOException;
 import java.net.Socket;
 
 public class ApplicationUtil extends Application{
-
-    private Socket socket;
-    private DataOutputStream out = null;
-    private DataInputStream in = null;
+    //    这个类用于存一下全局变量
     private Client client; // client作为全局，保证app运行中只有一个socket与服务器通讯
+    private String clinetName;
+
+    // 这两个变量是用于p2p对话另一端的信息
+    public String receivedip;
+    public String receivedName;
 
     public void initClient(String ip, int port) {
         client = new Client(ip, port);
     }
 
+    public String getClientName() {
+        return clinetName;
+    }
+
+    public void setClientName(String name) {
+        clinetName = name;
+    }
+
     public void closeClient() {
-        client.close();
+        if (client != null)
+            client.close();
         client = null;
     }
 
     public Client getClient() {
         return client;
-    }
-
-    public void setClient(Client client) {
-        this.client = client;
-    }
-
-    public void init() throws IOException, Exception{
-        this.socket = new Socket("192.168.1.104",10202);
-        this.out = new DataOutputStream(socket.getOutputStream());
-        this.in = new DataInputStream(socket.getInputStream());
-    }
-
-    public Socket getSocket() {
-        return socket;
-    }
-
-    public void setSocket(Socket socket) {
-        this.socket = socket;
-    }
-
-    public DataOutputStream getOut() {
-        return out;
-    }
-
-    public void setOut(DataOutputStream out) {
-        this.out = out;
-    }
-
-    public DataInputStream getIn() {
-        return in;
-    }
-
-    public void setIn(DataInputStream in) {
-        this.in = in;
     }
 
 }

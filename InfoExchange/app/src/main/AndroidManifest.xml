@@ -34,11 +34,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity
-            android:name=".MainActivity"
-            android:launchMode="singleInstance" />
+        <activity android:name=".MainActivity" />
         <activity android:name=".ChatRoomActivity" />
         <activity android:name=".P2pClientActivity"></activity>
+
+        <receiver
+            android:name=".StaticReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_STATICRECEIVER" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

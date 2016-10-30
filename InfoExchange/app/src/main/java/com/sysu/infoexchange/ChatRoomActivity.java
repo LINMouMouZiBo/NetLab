@@ -39,25 +39,30 @@ public class ChatRoomActivity extends AppCompatActivity {
     private ImageView picture;
     private Uri imageUri;
 
-    //    用于接收聊天信息
+    //    用于接收聊天信息，Android的UI更新不能在线程中操作，需要用一个handler来
+    //    获取线程操作结果，然后在handler中更新UI
     private Handler handler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
             Bundle data = msg.getData();
-            String val = data.getString("msg");
+            MsgText msgText = (MsgText) data.getSerializable("msg");
+            p2pCommd(msgText);
+            String val = "";
             // UI界面的更新等相关操作
-            MsgText msgText = MsgText.toMess(val);
             if (msgText != null) {
                 StringBuilder sb = new StringBuilder();
                 sb.append(msgText.getTime());
                 sb.append("\t");
                 sb.append(msgText.getUserName());
                 sb.append(": \n\t");
-                sb.append(msgText.getMsg());
+                sb.append(msgText.getText());
                 val = sb.toString();
             }
-            textView.setText(val + "\n" + textView.getText());
+            // 如果是p2p连接指令，不需要输出，这里起排除的作用
+            if (!(!"".equals(msgText.getDst()) && "0".equals(msgText.getType()))) {
+                textView.setText(val + "\n" + textView.getText());
+            }
         }
     };
 
@@ -67,8 +72,8 @@ public class ChatRoomActivity extends AppCompatActivity {
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
             Bundle data = msg.getData();
-            String val = data.getString("err");
-            Toast.makeText(ChatRoomActivity.this, val, Toast.LENGTH_SHORT).show();
+            MsgText msgText = (MsgText) data.getSerializable("msg");
+            Toast.makeText(ChatRoomActivity.this, msgText.getText(), Toast.LENGTH_SHORT).show();
         }
     };
 
@@ -78,7 +83,6 @@ public class ChatRoomActivity extends AppCompatActivity {
         try {
             super.onCreate(savedInstanceState);
             setContentView(R.layout.activity_chat_room);
-            Intent intent = this.getIntent();
             textView = (TextView) findViewById(R.id.text);
             editText = (EditText) findViewById(R.id.input);
 
@@ -86,12 +90,13 @@ public class ChatRoomActivity extends AppCompatActivity {
             chooseFromAlbum = (Button) findViewById(R.id.Choose);
             picture = (ImageView) findViewById(R.id.picture);
 
+
             appUtil = (ApplicationUtil) ChatRoomActivity.this.getApplication();
             if (appUtil.getClient() == null) {
-                appUtil.initClient(intent.getStringExtra("ip"), 2013);
-                new Thread(networkTask).start();
+                Toast.makeText(ChatRoomActivity.this, "网络异常，无法与服务器进行连接！", Toast.LENGTH_SHORT).show();
             }
             appUtil.getClient().setHandler(handler);
+            appUtil.getClient().sendMsg(MsgText.fromText(appUtil.getClientName(), "#enterRoom", "0"));
 
             Button send_btn = (Button) findViewById(R.id.send);
             send_btn.setOnClickListener(new Button.OnClickListener() {
@@ -100,7 +105,7 @@ public class ChatRoomActivity extends AppCompatActivity {
                     try {
                         String in = editText.getText().toString();
                         if (in != null && !"".equals(in))
-                            appUtil.getClient().sendMsg(editText.getText().toString());
+                            appUtil.getClient().sendMsg(MsgText.fromText(appUtil.getClientName(), editText.getText().toString(), "1"));
                     } catch (Exception e) {
                         appUtil.closeClient();
                         e.printStackTrace();
@@ -169,29 +174,21 @@ public class ChatRoomActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * 网络操作相关的子线程
-     */
-    Runnable networkTask = new Runnable() {
 
-        @Override
-        public void run() {
-            try {
-                //  在这里进行 socket连接
-                appUtil.getClient().contSocket();
-            } catch (Exception e) {
-                e.printStackTrace();
-                Logger.e(e.getMessage());
-                appUtil.closeClient();
-
-                Message msg = new Message();
-                Bundle data = new Bundle();
-                data.putString("err", "网络异常，无法与服务器进行连接！");
-                msg.setData(data);
-                ehandler.sendMessage(msg);
+    private void p2pCommd(MsgText msgText) {
+        if (!"".equals(msgText.getDst()) && "0".equals(msgText.getType())) {
+            String comd = msgText.getText();
+            if ("#requestP2P".equals(comd)) {
+                Intent intent = new Intent("android.intent.action.MY_STATICRECEIVER");
+                Bundle bundle = new Bundle();
+                bundle.putSerializable("msg", msgText);
+                intent.putExtras(bundle);
+                sendBroadcast(intent);
+            } else if ("#agreeP2P".equals(comd)) {
+                msgText.setText("与对方建立连接，现在可以进行聊天了!");
             }
         }
-    };
+    }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -202,19 +199,15 @@ public class ChatRoomActivity extends AppCompatActivity {
                     Intent intent = new Intent("com.android.camera.action.CROP");
                     //此处注释掉的部分是针对android 4.4路径修改的一个测试
                     //有兴趣的读者可以自己调试看看
-                    String text = imageUri.toString();
-//                    Toast.makeText(ConfigActivity.this, text, Toast.LENGTH_SHORT).show();
-//                    Intent intent1 = intent.setDataAndType(data.getData(), "image/*");
-                    try {
-                        Bitmap bitmap = BitmapFactory.decodeStream(new FileInputStream(imageUri.getPath()));
-                        picture.setImageBitmap(bitmap);
-                    } catch (Exception e) {
-                        e.printStackTrace();
+                    if (data == null) {
+                        intent.setDataAndType(imageUri, "image/*");
+                    } else {
+                        intent.setDataAndType(data.getData(), "image/*");
                     }
                     // 跳过剪裁步骤，否则会运行出bug
-//                    intent.putExtra("scale", true);
-//                    intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
-//                    startActivityForResult(intent, SHOW_PICTURE);
+                    intent.putExtra("scale", true);
+                    intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
+                    startActivityForResult(intent, SHOW_PICTURE);
                 }
                 break;
             case SHOW_PICTURE:
@@ -222,7 +215,6 @@ public class ChatRoomActivity extends AppCompatActivity {
                     try {
 //                        将output_image.jpg对象解析成Bitmap对象，然后设置到ImageView中显示出来
                         Bitmap bitmap = BitmapFactory.decodeStream(new FileInputStream(imageUri.getPath()));
-
                         picture.setImageBitmap(bitmap);
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -234,12 +226,23 @@ public class ChatRoomActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        try {
+            appUtil.getClient().sendMsg(MsgText.fromText(appUtil.getClientName(), "#leaveRoom", "0"));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+//
 //    @Override
 //    protected void onPause() {
 //        super.onPause();
-//        if (appUtil.getClient() != null) {
-//            appUtil.getClient().close();
-//            appUtil.getClient() = null;
+//        try {
+//            appUtil.getClient().sendMsg(MsgText.fromText(appUtil.getClientName(), "#leaveRoom", "0"));
+//        } catch (Exception e) {
+//            e.printStackTrace();
 //        }
 //    }
 

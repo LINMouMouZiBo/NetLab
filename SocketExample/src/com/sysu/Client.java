@@ -3,8 +3,12 @@ package com.sysu;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
+
+import com.sysu.infoexchange.pojo.MsgText;
  
 public class Client extends Socket{
  
@@ -12,8 +16,8 @@ public class Client extends Socket{
     private static final int SERVER_PORT =2013;
      
     private Socket client;
-    private PrintWriter out;
-    private BufferedReader in;
+    private ObjectOutputStream out;
+    private ObjectInputStream in;
     private BufferedReader wt;
      
     /**
@@ -22,8 +26,8 @@ public class Client extends Socket{
     public Client()throws Exception{
         super(SERVER_IP, SERVER_PORT);
         client =this;
-        out =new PrintWriter(this.getOutputStream(),true);
-        in =new BufferedReader(new InputStreamReader(this.getInputStream(), "UTF-8"));
+        out = new ObjectOutputStream(this.getOutputStream());
+        in =new ObjectInputStream(this.getInputStream());
     	wt =new BufferedReader(new InputStreamReader(System.in, "UTF-8"));
         new readLineThread();
          
@@ -32,7 +36,9 @@ public class Client extends Socket{
             String str=new String(input.getBytes("gbk"), "UTF-8"); 
 //            input = ;  
 //            System.out.println(input.getBytes("UTF-8").toString());
-            out.println(input);
+			MsgText msg = MsgText.fromText("系统消息", input, "0");
+
+			out.writeObject(msg);
             out.flush();
         }
     }
@@ -42,10 +48,11 @@ public class Client extends Socket{
      */
     class readLineThread extends Thread{
          
-        private BufferedReader buff;
+        private ObjectInputStream buff;
         public readLineThread(){
             try {
-                buff =new BufferedReader(new InputStreamReader(client.getInputStream(), "UTF-8"));
+//            	buff = new ObjectInputStream(client.getInputStream());
+//                buff =new BufferedReader(new InputStreamReader(client.getInputStream(), "UTF-8"));
                 start();
             }catch (Exception e) {
             	e.printStackTrace();
@@ -56,11 +63,12 @@ public class Client extends Socket{
         public void run() {
             try {
                 while(true){
-                    String result = buff.readLine();
-                    if("byeClient".equals(result)){//客户端申请退出，服务端返回确认退出
+                	MsgText message;
+//                    String result = buff.readLine();
+                    if((message = (MsgText)in.readObject()) == null){//客户端申请退出，服务端返回确认退出
                         break;
                     }else{//输出服务端发送消息
-                        System.out.println(result);
+                        System.out.println(message.toString());
                     }
                 }
             }catch (Exception e) {

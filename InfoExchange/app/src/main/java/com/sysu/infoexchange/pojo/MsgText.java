@@ -3,12 +3,20 @@ package com.sysu.infoexchange.pojo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 
+import com.sysu.infoexchange.utils.DateUtil;
+
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
 public class MsgText implements Serializable {
+    //    private static long serialVersionUID = 1113799434508676095L;
     public String time;
     public String userName;
+    // 信息发送源ip
+    public String ip;
 
     // 目标位置
     // 空字符表示聊天室内的消息
@@ -18,34 +26,66 @@ public class MsgText implements Serializable {
     public String type;
 
     // 传送的数据
-    public String msg;
+    public String text;
+    public byte[] image;
 
-    public MsgText(String msg, String time, String userName) {
-        this.msg = msg;
+    public MsgText() {
+        time = "";
+        userName = "";
+        ip = "";
+        dst = "";
+        type = "";
+        text = "";
+        image = new byte[1];
+    }
+
+    public MsgText(String text, String time, String userName) {
+        this.text = text;
         this.time = time;
         this.userName = userName;
     }
 
-    public MsgText() {}
+    public String getIp() {
+        return ip;
+    }
+    public void setIp(String ip) {
+        this.ip = ip;
+    }
 
-    public void setMsg(String msg) {
-        this.msg = msg;
+    public byte[] getImage() {
+        return image;
+    }
+
+    public void setImage(byte[] image) {
+        this.image = image;
+    }
+
+    public String getDst() {
+        return dst;
+    }
+
+    public void setDst(String dst) {
+        this.dst = dst;
+    }
+
+    public String getText() {
+        return text;
+    }
+
+    public void setText(String text) {
+        this.text = text;
     }
 
     public void setTime(String time) {
         this.time = time;
     }
 
-    public void setUserName(String userName) {
-        this.userName = userName;
-    }
-
-    public String getMsg() {
-        return msg;
-    }
-
     public String getTime() {
         return time;
+    }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
     }
 
     public String getUserName() {
@@ -60,6 +100,7 @@ public class MsgText implements Serializable {
         this.type = type;
     }
 
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder("");
@@ -69,9 +110,12 @@ public class MsgText implements Serializable {
         sb.append(", time");
         sb.append(":");
         sb.append(time);
-        sb.append(", msg");
+        sb.append(", target");
         sb.append(":");
-        sb.append(msg);
+        sb.append(dst);
+        sb.append(", text");
+        sb.append(":");
+        sb.append(text);
         sb.append(", type");
         sb.append(":");
         sb.append(type);
@@ -79,29 +123,59 @@ public class MsgText implements Serializable {
         return sb.toString();
     }
 
-    public static MsgText toMess(String msg) {
-        msg = msg.replace("(", "");
-        msg = msg.replace(")", "");
-        String[] item = msg.split(",");
-        //  部分msg不是标准的数据形式，无法转化为mesText
-        if (item.length < 4) {
+
+    /*
+ * type 为0 代表这是系统发出的提示信息，否则为用户信息
+ */
+    public static MsgText fromText(String username, String text, String type) {
+        if (text == null) {
             return null;
         }
         MsgText message = new MsgText();
-        message.setType(item[3].substring(item[3].indexOf(':') + 1));
-        message.setMsg(item[2].substring(item[2].indexOf(':') + 1));
-        message.setTime(item[1].substring(item[1].indexOf(':') + 1));
-        message.setUserName(item[0].substring(item[0].indexOf(':') + 1));
+        message.setText(text);
+        message.setTime(DateUtil.getDateString(DateUtil.getCurrrentDate()));
+        message.setUserName(username);
+        message.setType(type);
+
+        if ("0".equals(type) || "3".equals(type)) {
+            message.setUserName("系统消息");
+        }
+
         return message;
     }
 
-    public byte[] getBytes(Bitmap bitmap){
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.PNG, 0, baos);
-        return baos.toByteArray();
+    private void writeObject(ObjectOutputStream out) throws IOException {
+        out.defaultWriteObject();
+        out.writeObject(time);
+        out.writeObject(userName);
+        out.writeObject(ip);
+        out.writeObject(dst);
+        out.writeObject(type);
+
+        if ("0".equals(type) || "1".equals(type)) {
+            out.writeObject(text);
+        } else if ("2".equals(type)) {
+            final int len = image.length;
+            out.writeInt(len);
+            out.write(image, 0, len);
+        }
     }
 
-    public Bitmap getBitmap(byte[] data){
-        return BitmapFactory.decodeByteArray(data, 0, data.length);
+    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+        in.defaultReadObject();
+        time = (String) in.readObject();
+        userName = (String) in.readObject();
+        ip = (String)in.readObject();
+        dst = (String) in.readObject();
+        type = (String) in.readObject();
+
+        if ("0".equals(type) || "1".equals(type)) {
+            text = (String) in.readObject();
+        } else if ("2".equals(type)) {
+            final int len = in.readInt();
+            if (in.read(image, 0, len) != len) {
+                throw new IOException();
+            }
+        }
     }
 }

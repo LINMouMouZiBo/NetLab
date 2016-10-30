@@ -1,4 +1,4 @@
-package com.sysu.pojo;
+package com.sysu.infoexchange.pojo;
 
 import com.sysu.utils.DateUtil;
 
@@ -7,9 +7,11 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 
-public class Message implements Serializable {
+public class MsgText implements Serializable {
 	public String time;
 	public String userName;
+	// 信息发送源ip
+	public String ip;
 
 	// 目标位置
 	// 空字符表示聊天室内的消息
@@ -21,59 +23,91 @@ public class Message implements Serializable {
 	// 传送的数据
 	public String text;
 	public byte[] image;
+	
+	public MsgText() {
+		time = "";
+		userName = "";
+        ip = "";
+		dst = "";
+		type = "";
+		text = "";
+		image = new byte[1];
+	}
+	
+    public MsgText(String text, String time, String userName) {
+        this.text = text;
+        this.time = time;
+        this.userName = userName;
+    }
 
 	/*
 	 * type 为0 代表这是系统发出的提示信息，否则为用户信息
 	 */
-	public static Message fromText(String username, String text) {
+	public static MsgText fromText(String username, String text, String type) {
 		if (text == null) {
 			return null;
 		}
-		Message message = new Message();
+		MsgText message = new MsgText();
 		message.setText(text);
 		message.setTime(DateUtil.getDateString(DateUtil.getCurrrentDate()));
 		message.setUserName(username);
+		message.setType(type);
 
-		if ("系统消息".equals(username)) {
-			message.setType("0");
-		} else {
-			message.setText("1");
+		if ("0".equals(type) || "3".equals(type)) {
+			message.setUserName("系统消息");
 		}
 
 		return message;
 	}
-
-	public void setText(String text) {
-		this.text = text;
+	
+	public String getIp() {
+		return ip;
+	}
+	public void setIp(String ip) {
+		this.ip = ip;
 	}
 
-	public void setTime(String time) {
-		this.time = time;
-	}
+    public byte[] getImage() {
+        return image;
+    }
+    public void setImage(byte[] image) {
+        this.image = image;
+    }
 
-	public void setUserName(String userName) {
-		this.userName = userName;
-	}
+    public String getDst() {
+        return dst;
+    }
+    public void setDst(String dst) {
+        this.dst = dst;
+    }
 
-	public String getText() {
-		return text;
-	}
+    public String getText() {
+        return text;
+    }
+    public void setText(String text) {
+        this.text = text;
+    }
 
-	public String getTime() {
-		return time;
-	}
+    public void setTime(String time) {
+        this.time = time;
+    }
+    public String getTime() {
+        return time;
+    }
 
-	public String getUserName() {
-		return userName;
-	}
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+    public String getUserName() {
+        return userName;
+    }
 
-	public String getType() {
-		return type;
-	}
-
-	public void setType(String type) {
-		this.type = type;
-	}
+    public String getType() {
+        return type;
+    }
+    public void setType(String type) {
+        this.type = type;
+    }
 
 	@Override
 	public String toString() {
@@ -101,6 +135,7 @@ public class Message implements Serializable {
 		out.defaultWriteObject();
 		out.writeObject(time);
 		out.writeObject(userName);
+		out.writeObject(ip);
 		out.writeObject(dst);
 		out.writeObject(type);
 
@@ -117,6 +152,7 @@ public class Message implements Serializable {
 		in.defaultReadObject();
 		time = (String)in.readObject();
 		userName = (String)in.readObject();
+		ip = (String)in.readObject();
 		dst = (String)in.readObject();
 		type = (String)in.readObject();
 

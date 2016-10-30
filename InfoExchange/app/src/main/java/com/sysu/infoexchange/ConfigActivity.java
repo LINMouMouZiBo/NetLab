@@ -20,6 +20,7 @@ public class ConfigActivity extends AppCompatActivity {
         ip_editText = (EditText) findViewById(R.id.ip);
         ip_editText.setText("192.168.199.217");
         name_editText = (EditText) findViewById(R.id.name);
+        name_editText.setText("test");
 
         Button confirm_btn = (Button) findViewById(R.id.confirm_btn);
         confirm_btn.setOnClickListener(new Button.OnClickListener() {
@@ -44,6 +45,7 @@ public class ConfigActivity extends AppCompatActivity {
     @Override
     public  void finish() {
         super.finish();
+        // 没有界面可以后退时，就断开socket，退出app
         if (isTaskRoot()) {
             ApplicationUtil appUtil =  (ApplicationUtil) getApplication();
             appUtil.closeClient();

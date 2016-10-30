@@ -1,5 +1,6 @@
 package com.sysu.infoexchange.socket;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -8,10 +9,9 @@ import com.orhanobut.logger.Logger;
 import com.sysu.infoexchange.pojo.MsgText;
 import com.sysu.infoexchange.utils.DateUtil;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.Socket;
 
 // 与服务器通讯的socket
@@ -21,28 +21,29 @@ public class Client {
     private int SERVER_PORT = 2013;
 
     private Socket client;
-    private PrintWriter out;
-    private BufferedReader in;
+    private ObjectOutputStream out;
+    private ObjectInputStream in;
     private Handler handler;
 
     /**
      * 与服务器连接，并输入发送消息
      */
-    public Client(String ip) {
-        SERVER_IP = ip;
-    }
 
     public Client(String ip, int port) {
         SERVER_IP = ip;
         SERVER_PORT = port;
     }
 
+    public String getIp() {
+        return client.getInetAddress().getHostAddress();
+    }
+
     public void contSocket() throws Exception {
         client = new Socket(SERVER_IP, SERVER_PORT);
         client.setSoTimeout(1000 * 60 * 5);
-        out = new PrintWriter(client.getOutputStream(), true);
+        out = new ObjectOutputStream(client.getOutputStream());
         /* 获取输出流 */
-        in = new BufferedReader(new InputStreamReader(client.getInputStream(), "UTF-8"));
+        in = new ObjectInputStream(client.getInputStream());
         new readLineThread();
     }
 
@@ -50,21 +51,26 @@ public class Client {
         handler = h;
     }
 
-    public void sendMsg(String input) {
-        out.println(input);
-        out.flush();
+    public void sendMsg(MsgText msg) throws IOException {
+            out.writeObject(msg);
+            out.flush();
     }
 
     public void close() {
         try {
-            if (client != null && client.isConnected())
-                sendMsg("bye");
-            if (in != null)
-                in.close();
-            if (out != null)
-                out.close();
-            if (client != null)
-                client.close();
+            if (client != null && client.isConnected()) {
+                sendMsg(MsgText.fromText("系统消息", "#bye", "0"));
+            } else {
+                if (in != null)
+                    in.close();
+                if (out != null)
+                    out.close();
+                if (client != null)
+                    client.close();
+                in = null;
+                out = null;
+                client = null;
+            }
         } catch (IOException e) {
             e.printStackTrace();
             Logger.e(e.getMessage());
@@ -76,11 +82,8 @@ public class Client {
      */
     class readLineThread extends Thread {
 
-        private BufferedReader buff;
-
         public readLineThread() {
             try {
-                buff = new BufferedReader(new InputStreamReader(client.getInputStream(), "UTF-8"));
                 start();
             } catch (Exception e) {
                 e.printStackTrace();
@@ -92,14 +95,15 @@ public class Client {
         public void run() {
             try {
                 while (true) {
-                    String result = buff.readLine();
-                    if ("byeClient".equals(result)) {//客户端申请退出，服务端返回确认退出
+                    MsgText msgText = (MsgText) in.readObject();
+                    String result = msgText.getText();
+                    if ("#byeClient".equals(result)) {//客户端申请退出，服务端返回确认退出
                         break;
                     } else {//输出服务端发送消息
                         System.out.println(result);
                         Message msg = new Message();
                         Bundle data = new Bundle();
-                        data.putString("msg", result);
+                        data.putSerializable("msg", msgText);
                         msg.setData(data);
                         handler.sendMessage(msg);
                     }
@@ -111,7 +115,7 @@ public class Client {
                         DateUtil.getDateString(DateUtil.getCurrrentDate()), "系统提示");
                 Message msg = new Message();
                 Bundle data = new Bundle();
-                data.putString("msg", msgText.toString());
+                data.putSerializable("msg", msgText);
                 msg.setData(data);
                 handler.sendMessage(msg);
                 close();

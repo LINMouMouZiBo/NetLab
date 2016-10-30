@@ -1,4 +1,4 @@
-package com.sysu.pojo;
+package com.sysu.infoexchange.pojo;
 
 import java.io.Serializable;
 
@@ -6,6 +6,12 @@ public class User implements Serializable {
 	private String name;
 	private String ip;
 	private String chattingTarget;
+	
+	public  User() {
+		name = "";
+		ip = "";
+		chattingTarget = "";
+	}
 
 	public String getIp() {
 		return ip;

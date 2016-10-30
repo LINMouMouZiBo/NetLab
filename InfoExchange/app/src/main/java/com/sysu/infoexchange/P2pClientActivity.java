@@ -14,13 +14,14 @@ import android.widget.Toast;
 import com.orhanobut.logger.Logger;
 import com.sysu.infoexchange.pojo.MsgText;
 import com.sysu.infoexchange.socket.Client;
+import com.sysu.infoexchange.utils.ApplicationUtil;
 
 public class P2pClientActivity extends AppCompatActivity {
-    private Client client;
+    private ApplicationUtil appUtil;
     private TextView textView;
     private EditText editText;
     //    socket连接时的信息
-    private String ip;
+    private String receiverIp;
     private String clientName;
 
     //    用于接收聊天信息
@@ -29,16 +30,17 @@ public class P2pClientActivity extends AppCompatActivity {
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
             Bundle data = msg.getData();
-            String val = data.getString("msg");
             // UI界面的更新等相关操作
-            MsgText msgText = MsgText.toMess(val);
+            MsgText msgText = (MsgText) data.getSerializable("msg");
+            p2pCommd(msgText);
+            String val = "";
             if (msgText != null) {
                 StringBuilder sb = new StringBuilder();
                 sb.append(msgText.getTime());
                 sb.append("\t");
                 sb.append(msgText.getUserName());
                 sb.append(": \n\t");
-                sb.append(msgText.getMsg());
+                sb.append(msgText.getText());
                 val = sb.toString();
             }
             textView.setText(val + "\n" + textView.getText());
@@ -64,13 +66,24 @@ public class P2pClientActivity extends AppCompatActivity {
             Intent intent = this.getIntent();
             textView = (TextView) findViewById(R.id.text);
             editText = (EditText) findViewById(R.id.input);
-            clientName = intent.getStringExtra("name");
-            ip = intent.getStringExtra("ip");
+            Boolean isPassive = intent.getBooleanExtra("isPassive", false);
 
-            client = new Client(ip, 2014);
-            client.setHandler(handler);
-            new Thread(networkTask).start();
-
+            appUtil = (ApplicationUtil) P2pClientActivity.this.getApplication();
+            if (appUtil.getClient() == null) {
+                Toast.makeText(P2pClientActivity.this, "网络异常，无法与服务器进行连接！", Toast.LENGTH_SHORT).show();
+            }
+            appUtil.getClient().setHandler(handler);
+            clientName = appUtil.receivedName;
+            receiverIp = appUtil.receivedip;
+            if (isPassive) {
+                // 被动建立连接，进行同意
+                receiverIp = intent.getStringExtra("receiverIp");
+                appUtil.receivedip = receiverIp;
+                sendConnectMsg("#confirmP2P");
+            } else {
+                // 主动发起连接
+                sendConnectMsg("#P2Pchat");
+            }
 
             Button send_btn = (Button) findViewById(R.id.send);
             send_btn.setOnClickListener(new Button.OnClickListener() {
@@ -78,10 +91,14 @@ public class P2pClientActivity extends AppCompatActivity {
                 public void onClick(View view) {
                     try {
                         String in = editText.getText().toString();
-                        if (in != null && !"".equals(in))
-                            client.sendMsg(editText.getText().toString());
+                        if (in != null && !"".equals(in)) {
+                            MsgText msgText = MsgText.fromText(appUtil.getClientName(), editText.getText().toString(), "1");
+                            msgText.setDst(receiverIp);
+                            msgText.setIp(appUtil.getClient().getIp());
+                            appUtil.getClient().sendMsg(msgText);
+                        }
                     } catch (Exception e) {
-                        client.close();
+                        appUtil.closeClient();
                         e.printStackTrace();
                         Logger.e(e.getMessage());
                     }
@@ -90,32 +107,46 @@ public class P2pClientActivity extends AppCompatActivity {
         } catch (Exception e) {
             e.printStackTrace();
             Logger.e(e.getMessage());
-            client.close();
+            appUtil.closeClient();
         }
     }
 
-    Runnable networkTask = new Runnable() {
+    private void sendConnectMsg(String commd) throws Exception {
+        MsgText msgText = MsgText.fromText(appUtil.getClientName(), commd, "0");
+        msgText.setDst(receiverIp);
+        msgText.setIp(appUtil.getClient().getIp());
+        appUtil.getClient().sendMsg(msgText);
+    }
 
-        @Override
-        public void run() {
-            try {
-                //  在这里进行 socket连接
-                client.contSocket();
-                Thread.sleep(100);
-                client.sendMsg(clientName);
-                Thread.sleep(100);
-                client.sendMsg("showuser");
-            } catch (Exception e) {
-                e.printStackTrace();
-                Logger.e(e.getMessage());
-                client.close();
-
-                Message msg = new Message();
-                Bundle data = new Bundle();
-                data.putString("err", "网络异常，无法与服务器进行连接！");
-                msg.setData(data);
-                ehandler.sendMessage(msg);
+    private void p2pCommd(MsgText msgText) {
+        if (!"".equals(msgText.getDst()) && "0".equals(msgText.getType())) {
+            String comd = msgText.getText();
+            if ("#requestP2P".equals(comd)) {
+                Intent intent = new Intent("android.intent.action.MY_STATICRECEIVER");
+                Bundle bundle = new Bundle();
+                bundle.putSerializable("msg", msgText);
+                intent.putExtras(bundle);
+                sendBroadcast(intent);
+            } else if ("#agreeP2P".equals(comd)) {
+                msgText.setText("与对方建立连接，现在可以进行聊天了!");
+            } else if ("#quitP2P".equals(comd)) {
+                try {
+                    sendConnectMsg("#leaveP2PchatPassive");
+                    msgText.setText("对方终止聊天，聊天结束");
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         }
-    };
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        try {
+            sendConnectMsg("#leaveP2Pchat");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }
