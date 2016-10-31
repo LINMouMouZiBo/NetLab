@@ -186,6 +186,16 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        try {
+            appUtil.getClient().sendMsg(MsgText.fromText("系统消息", "#showuser", "0"));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
     protected void onRestart() {
         super.onRestart();
         try {
