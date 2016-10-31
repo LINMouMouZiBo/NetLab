@@ -24,7 +24,7 @@ public class DateUtil {
 
 	// 获取当前时间的字符串形式
 	public static String getDateString(Date date) {
-		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 		String str = sdf.format(date);
 		return str;
 	}
