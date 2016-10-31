@@ -18,7 +18,7 @@ public class ConfigActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_config);
         ip_editText = (EditText) findViewById(R.id.ip);
-        ip_editText.setText("192.168.199.217");
+        ip_editText.setText("119.29.135.223");
         name_editText = (EditText) findViewById(R.id.name);
         name_editText.setText("test");
 

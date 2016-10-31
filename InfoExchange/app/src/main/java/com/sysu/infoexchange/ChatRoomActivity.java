@@ -14,10 +14,13 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.orhanobut.logger.Logger;
+import com.sysu.infoexchange.adapter.MessageApapter;
+import com.sysu.infoexchange.pojo.MessageItem;
 import com.sysu.infoexchange.pojo.MsgText;
 import com.sysu.infoexchange.socket.Client;
 import com.sysu.infoexchange.utils.ApplicationUtil;
@@ -26,19 +29,22 @@ import com.sysu.infoexchange.utils.BitmapUtils;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class ChatRoomActivity extends AppCompatActivity {
     //    private Client client;
     private ApplicationUtil appUtil;
-    private TextView textView;
     private EditText editText;
 
     public static final int CUT_PICTURE = 1;
     public static final int SHOW_PICTURE = 2;
     private Button takePhoto;
     private Button chooseFromAlbum;
-    private ImageView picture;
     private Uri imageUri;
+    private ListView listView;
+    private MessageApapter msgAdapter;
+    private List<MessageItem> listData;
 
     //    用于接收聊天信息，Android的UI更新不能在线程中操作，需要用一个handler来
     //    获取线程操作结果，然后在handler中更新UI
@@ -60,14 +66,12 @@ public class ChatRoomActivity extends AppCompatActivity {
                 sb.append(msgText.getText());
                 val = sb.toString();
             }
-            // 如果是p2p连接指令，不需要输出，这里起排除的作用
-            if (!(!"".equals(msgText.getDst()) && "0".equals(msgText.getType()))) {
-                if ("3".equals(msgText.getType())) {
-                    picture.setImageBitmap(BitmapUtils.getBitmap(msgText.getImage()));
-                } else {
-                    textView.setText(val + "\n" + textView.getText());
-                }
-            }
+
+            MessageItem msgItem = new MessageItem();
+            msgItem.setText(msgText.getText());
+            msgItem.setImage(BitmapUtils.getBitmap(msgText.getImage()));
+            listData.add(0, msgItem);
+            msgAdapter.notifyDataSetChanged();
         }
     };
 
@@ -88,13 +92,16 @@ public class ChatRoomActivity extends AppCompatActivity {
         try {
             super.onCreate(savedInstanceState);
             setContentView(R.layout.activity_chat_room);
-            textView = (TextView) findViewById(R.id.text);
+
             editText = (EditText) findViewById(R.id.input);
 
             takePhoto = (Button) findViewById(R.id.Take);
             chooseFromAlbum = (Button) findViewById(R.id.Choose);
-            picture = (ImageView) findViewById(R.id.picture);
+            listView = (ListView) findViewById(R.id.contacts_list);
 
+            listData = new ArrayList<>();
+            msgAdapter = new MessageApapter(this, R.id.contacts_list, listData);
+            listView.setAdapter(msgAdapter);
 
             appUtil = (ApplicationUtil) ChatRoomActivity.this.getApplication();
             if (appUtil.getClient() == null) {
@@ -109,8 +116,10 @@ public class ChatRoomActivity extends AppCompatActivity {
                 public void onClick(View view) {
                     try {
                         String in = editText.getText().toString();
-                        if (in != null && !"".equals(in))
+                        if (in != null && !"".equals(in)) {
                             appUtil.getClient().sendMsg(MsgText.fromText(appUtil.getClientName(), editText.getText().toString(), "1"));
+                            editText.setText("");
+                        }
                     } catch (Exception e) {
                         appUtil.closeClient();
                         e.printStackTrace();
@@ -220,7 +229,6 @@ public class ChatRoomActivity extends AppCompatActivity {
                     try {
 //                        将output_image.jpg对象解析成Bitmap对象，然后设置到ImageView中显示出来
                         Bitmap bitmap = BitmapFactory.decodeStream(new FileInputStream(imageUri.getPath()));
-                        picture.setImageBitmap(bitmap);
                         
                         MsgText msgText = MsgText.fromText(appUtil.getClientName(), editText.getText().toString(), "3");
                         msgText.setImage(BitmapUtils.getBytes(bitmap));
