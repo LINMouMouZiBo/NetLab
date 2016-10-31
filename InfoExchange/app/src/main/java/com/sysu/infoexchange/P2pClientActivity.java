@@ -1,28 +1,51 @@
 package com.sysu.infoexchange;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
+import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.orhanobut.logger.Logger;
+import com.sysu.infoexchange.adapter.MessageApapter;
+import com.sysu.infoexchange.pojo.MessageItem;
 import com.sysu.infoexchange.pojo.MsgText;
 import com.sysu.infoexchange.socket.Client;
 import com.sysu.infoexchange.utils.ApplicationUtil;
+import com.sysu.infoexchange.utils.BitmapUtils;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class P2pClientActivity extends AppCompatActivity {
     private ApplicationUtil appUtil;
-    private TextView textView;
     private EditText editText;
     //    socket连接时的信息
     private String receiverIp;
     private String clientName;
+
+    public static final int CUT_PICTURE = 1;
+    public static final int SHOW_PICTURE = 2;
+    private Button takePhoto;
+    private Button chooseFromAlbum;
+    private Uri imageUri;
+    private ListView listView;
+    private MessageApapter msgAdapter;
+    private List<MessageItem> listData;
 
     //    用于接收聊天信息
     private Handler handler = new Handler() {
@@ -33,17 +56,13 @@ public class P2pClientActivity extends AppCompatActivity {
             // UI界面的更新等相关操作
             MsgText msgText = (MsgText) data.getSerializable("msg");
             p2pCommd(msgText);
-            String val = "";
-            if (msgText != null) {
-                StringBuilder sb = new StringBuilder();
-                sb.append(msgText.getTime());
-                sb.append("\t");
-                sb.append(msgText.getUserName());
-                sb.append(": \n\t");
-                sb.append(msgText.getText());
-                val = sb.toString();
-            }
-            textView.setText(val + "\n" + textView.getText());
+
+            MessageItem msgItem = new MessageItem();
+            msgItem.setNameAndTime(msgText.getUserName() + " " + msgText.getTime());
+            msgItem.setText(msgText.getText());
+            msgItem.setImage(BitmapUtils.getBitmap(msgText.getImage()));
+            listData.add(0, msgItem);
+            msgAdapter.notifyDataSetChanged();
         }
     };
 
@@ -64,8 +83,16 @@ public class P2pClientActivity extends AppCompatActivity {
             super.onCreate(savedInstanceState);
             setContentView(R.layout.activity_p2p_client);
             Intent intent = this.getIntent();
-            textView = (TextView) findViewById(R.id.text);
             editText = (EditText) findViewById(R.id.input);
+
+            takePhoto = (Button) findViewById(R.id.Take);
+            chooseFromAlbum = (Button) findViewById(R.id.Choose);
+            listView = (ListView) findViewById(R.id.contacts_list);
+
+            listData = new ArrayList<>();
+            msgAdapter = new MessageApapter(this, R.id.contacts_list, listData);
+            listView.setAdapter(msgAdapter);
+
             Boolean isPassive = intent.getBooleanExtra("isPassive", false);
 
             appUtil = (ApplicationUtil) P2pClientActivity.this.getApplication();
@@ -96,6 +123,7 @@ public class P2pClientActivity extends AppCompatActivity {
                             msgText.setDst(receiverIp);
                             msgText.setIp(appUtil.getClient().getIp());
                             appUtil.getClient().sendMsg(msgText);
+                            editText.setText("");
                         }
                     } catch (Exception e) {
                         appUtil.closeClient();
@@ -104,10 +132,107 @@ public class P2pClientActivity extends AppCompatActivity {
                     }
                 }
             });
+
+
+            takePhoto.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    //创建File对象，用于存储拍照后的图片
+                    //将此图片存储于SD卡的根目录下
+                    File outputImage = new File(Environment.getExternalStorageDirectory(),
+                            "output_image.jpg");
+                    try {
+                        if (outputImage.exists()) {
+                            outputImage.delete();
+                        }
+                        outputImage.createNewFile();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    //将File对象转换成Uri对象
+                    //Uri表标识着图片的地址
+                    imageUri = Uri.fromFile(outputImage);
+                    //隐式调用照相机程序
+                    Intent intent = new Intent("android.media.action.IMAGE_CAPTURE");
+                    //拍下的照片会被输出到output_image.jpg中去
+                    intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
+                    //此处是使用的startActivityForResult（）
+                    //因此在拍照完后悔有结果返回到onActivityResult（）中去，返回值即为TAKE_PHOTO
+                    //onActivityResult（）中主要是实现图片裁剪
+                    startActivityForResult(intent, CUT_PICTURE);
+                }
+            });
+
+            chooseFromAlbum.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    File outputImage = new File(Environment.getExternalStorageDirectory(),
+                            "output_image.jpg");
+                    imageUri = Uri.fromFile(outputImage);
+
+                    try {
+                        if (outputImage.exists()) {
+                            outputImage.delete();
+                        }
+                        outputImage.createNewFile();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    Intent intent = new Intent(Intent.ACTION_PICK, null);
+                    //此处调用了图片选择器
+                    //如果直接写intent.setDataAndType("image/*");
+                    //调用的是系统图库
+                    intent.setDataAndType(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image/*");
+                    intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
+                    startActivityForResult(intent, CUT_PICTURE);
+                }
+            });
         } catch (Exception e) {
             e.printStackTrace();
             Logger.e(e.getMessage());
             appUtil.closeClient();
+        }
+    }
+
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        switch (requestCode) {
+            case CUT_PICTURE:
+                if (resultCode == RESULT_OK) {
+                    //此处启动裁剪程序
+                    Intent intent = new Intent("com.android.camera.action.CROP");
+                    //此处注释掉的部分是针对android 4.4路径修改的一个测试
+                    //有兴趣的读者可以自己调试看看
+                    if (data == null) {
+                        intent.setDataAndType(imageUri, "image/*");
+                    } else {
+                        intent.setDataAndType(data.getData(), "image/*");
+                    }
+                    // 跳过剪裁步骤，否则会运行出bug
+                    intent.putExtra("scale", true);
+                    intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
+                    startActivityForResult(intent, SHOW_PICTURE);
+                }
+                break;
+            case SHOW_PICTURE:
+                if (resultCode == RESULT_OK) {
+                    try {
+//                        将output_image.jpg对象解析成Bitmap对象，然后设置到ImageView中显示出来
+                        Bitmap bitmap = BitmapFactory.decodeStream(new FileInputStream(imageUri.getPath()));
+
+                        MsgText msgText = MsgText.fromText(appUtil.getClientName(), editText.getText().toString(), "3");
+                        msgText.setDst(receiverIp);
+                        msgText.setIp(appUtil.getClient().getIp());
+                        msgText.setImage(BitmapUtils.getBytes(bitmap));
+                        appUtil.getClient().sendMsg(msgText);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+                break;
+            default:
+                break;
         }
     }
 

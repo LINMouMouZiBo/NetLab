@@ -20,7 +20,7 @@ public class ConfigActivity extends AppCompatActivity {
         ip_editText = (EditText) findViewById(R.id.ip);
         ip_editText.setText("119.29.135.223");
         name_editText = (EditText) findViewById(R.id.name);
-        name_editText.setText("test");
+//        name_editText.setText("test");
 
         Button confirm_btn = (Button) findViewById(R.id.confirm_btn);
         confirm_btn.setOnClickListener(new Button.OnClickListener() {

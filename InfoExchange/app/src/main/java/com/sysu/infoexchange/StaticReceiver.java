@@ -33,11 +33,11 @@ public class StaticReceiver extends BroadcastReceiver {
 
         PendingIntent pi = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
         Notification notification = new Notification.Builder(context)
-                .setTicker(msgText.getUserName() + "发起跟你的聊天！")
-                .setSmallIcon(R.drawable.apple)
-                .setLargeIcon(BitmapFactory.decodeResource(context.getResources(), R.drawable.apple))
-                .setContentTitle(msgText.getText())
-                .setContentText(msgText.getText())
+                .setTicker("其他用户发起跟你的聊天！")
+                .setSmallIcon(R.drawable.note)
+                .setLargeIcon(BitmapFactory.decodeResource(context.getResources(), R.drawable.note))
+                .setContentTitle("p2p聊天申请")
+                .setContentText("其他用户发起跟你的聊天，点击信息开始聊天！")
                 .setContentIntent(pi)
                 .build();
         notification.flags |= Notification.FLAG_AUTO_CANCEL; //点击后删除，如果是FLAG_NO_CLEAR则不删除，FLAG_ONGOING_EVENT用于某事正在进行，例如电话，具体查看参考。

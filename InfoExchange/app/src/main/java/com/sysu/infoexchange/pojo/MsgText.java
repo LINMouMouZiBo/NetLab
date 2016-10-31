@@ -137,7 +137,7 @@ public class MsgText implements Serializable {
         message.setUserName(username);
         message.setType(type);
 
-        if ("0".equals(type) || "3".equals(type)) {
+        if ("0".equals(type)) {
             message.setUserName("系统消息");
         }
 

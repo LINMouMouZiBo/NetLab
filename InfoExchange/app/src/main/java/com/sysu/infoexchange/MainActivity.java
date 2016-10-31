@@ -44,15 +44,10 @@ public class MainActivity extends AppCompatActivity {
             String val = "";
             // UI界面的更新等相关操作
             if (msgText != null) {
-                StringBuilder sb = new StringBuilder();
-                sb.append(msgText.getTime());
-                sb.append("\t");
-                sb.append(msgText.getUserName());
-                sb.append(": \n\t");
-                sb.append(msgText.getText());
-                val = sb.toString();
                 if ("3".equals(msgText.getType())) {
                     updateOnlineUser(msgText.getText());
+                } else if ("0".equals(msgText.getType())) {
+                    Toast.makeText(MainActivity.this, msgText.getText(), Toast.LENGTH_SHORT).show();
                 }
             }
             textView.setText(val + "\n" + textView.getText());
