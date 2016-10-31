@@ -1,7 +1,6 @@
 package com.sysu.infoexchange.pojo;
 
 import android.graphics.Bitmap;
-import android.graphics.drawable.ScaleDrawable;
 
 /**
  * Created by zhuangqh on 2016/10/31.
@@ -9,6 +8,7 @@ import android.graphics.drawable.ScaleDrawable;
 
 public class MessageItem {
     String text;
+    String nameAndTime;
     Bitmap image;
 
     public Bitmap getImage() {
@@ -25,5 +25,13 @@ public class MessageItem {
 
     public void setImage(Bitmap image) {
         this.image = image;
+    }
+
+    public String getNameAndTime() {
+        return nameAndTime;
+    }
+
+    public void setNameAndTime(String nameAndTime) {
+        this.nameAndTime = nameAndTime;
     }
 }
