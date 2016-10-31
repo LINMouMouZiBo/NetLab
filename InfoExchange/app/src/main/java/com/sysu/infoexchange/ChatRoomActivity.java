@@ -55,19 +55,9 @@ public class ChatRoomActivity extends AppCompatActivity {
             Bundle data = msg.getData();
             MsgText msgText = (MsgText) data.getSerializable("msg");
             p2pCommd(msgText);
-            String val = "";
-            // UI界面的更新等相关操作
-            if (msgText != null) {
-                StringBuilder sb = new StringBuilder();
-                sb.append(msgText.getTime());
-                sb.append("\t");
-                sb.append(msgText.getUserName());
-                sb.append(": \n\t");
-                sb.append(msgText.getText());
-                val = sb.toString();
-            }
 
             MessageItem msgItem = new MessageItem();
+            msgItem.setNameAndTime(msgText.getUserName() + " " + msgText.getTime());
             msgItem.setText(msgText.getText());
             msgItem.setImage(BitmapUtils.getBitmap(msgText.getImage()));
             listData.add(0, msgItem);
