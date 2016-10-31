@@ -21,6 +21,7 @@ import com.orhanobut.logger.Logger;
 import com.sysu.infoexchange.pojo.MsgText;
 import com.sysu.infoexchange.socket.Client;
 import com.sysu.infoexchange.utils.ApplicationUtil;
+import com.sysu.infoexchange.utils.BitmapUtils;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -61,7 +62,11 @@ public class ChatRoomActivity extends AppCompatActivity {
             }
             // 如果是p2p连接指令，不需要输出，这里起排除的作用
             if (!(!"".equals(msgText.getDst()) && "0".equals(msgText.getType()))) {
-                textView.setText(val + "\n" + textView.getText());
+                if ("3".equals(msgText.getType())) {
+                    picture.setImageBitmap(BitmapUtils.getBitmap(msgText.getImage()));
+                } else {
+                    textView.setText(val + "\n" + textView.getText());
+                }
             }
         }
     };
@@ -216,6 +221,10 @@ public class ChatRoomActivity extends AppCompatActivity {
 //                        将output_image.jpg对象解析成Bitmap对象，然后设置到ImageView中显示出来
                         Bitmap bitmap = BitmapFactory.decodeStream(new FileInputStream(imageUri.getPath()));
                         picture.setImageBitmap(bitmap);
+                        
+                        MsgText msgText = MsgText.fromText(appUtil.getClientName(), editText.getText().toString(), "3");
+                        msgText.setImage(BitmapUtils.getBytes(bitmap));
+                        appUtil.getClient().sendMsg(msgText);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
